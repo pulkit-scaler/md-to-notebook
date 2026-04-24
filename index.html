@@ -3,1269 +3,468 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>md→notebook — Markdown to Jupyter Converter</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<title>MD → NOTEBOOK</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --bg: #0a0d0f;
-  --bg2: #0f1316;
-  --bg3: #141a1f;
-  --bg4: #1a2128;
-  --border: #1e2a33;
-  --border2: #263542;
-  --green: #3ddc84;
-  --green-dim: #2aaa64;
-  --green-faint: rgba(61,220,132,0.08);
-  --green-faint2: rgba(61,220,132,0.04);
-  --amber: #f5a623;
-  --red: #ff5f57;
-  --blue: #58a6ff;
-  --text: #e2eaf0;
-  --text2: #8a9bb0;
-  --text3: #4a5a6a;
-  --mono: 'JetBrains Mono', monospace;
-  --display: 'Syne', sans-serif;
-}
-
-html { font-size: 16px; scroll-behavior: smooth; }
-
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--mono);
-  line-height: 1.6;
+  background: #0e1012;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* ── SCANLINE OVERLAY ── */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* ── NAV ── */
-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(10,13,15,0.92);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-}
-
-.nav-logo {
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--green);
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.nav-logo::before {
-  content: '>';
-  color: var(--green-dim);
-  animation: blink 1.2s step-end infinite;
-}
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-.nav-links {
-  display: flex;
-  gap: 2rem;
-  list-style: none;
-}
-
-.nav-links a {
-  font-size: 12px;
-  color: var(--text2);
-  text-decoration: none;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: color 0.15s;
-}
-
-.nav-links a:hover { color: var(--green); }
-
-.nav-badge {
-  font-size: 11px;
-  color: var(--text3);
-  border: 1px solid var(--border2);
-  padding: 3px 10px;
-  border-radius: 2px;
-  letter-spacing: 0.04em;
-}
-
-/* ── HERO ── */
-.hero {
-  padding: 7rem 2rem 5rem;
-  max-width: 900px;
+  padding: 2.5rem 2rem;
+  max-width: 780px;
   margin: 0 auto;
-  position: relative;
 }
 
-.hero-eyebrow {
-  font-size: 11px;
-  color: var(--green-dim);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.1s forwards;
-}
+/* HEADER */
+.header { margin-bottom: 2rem; }
 
-.hero-eyebrow::before {
-  content: '';
-  display: block;
-  width: 24px;
-  height: 1px;
-  background: var(--green-dim);
-}
-
-.hero h1 {
-  font-family: var(--display);
-  font-size: clamp(3rem, 8vw, 6rem);
-  font-weight: 800;
-  line-height: 1.0;
-  letter-spacing: -0.03em;
-  margin-bottom: 1.5rem;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.2s forwards;
-}
-
-.hero h1 .accent {
-  color: var(--green);
-  position: relative;
-}
-
-.hero-sub {
-  font-size: 15px;
-  color: var(--text2);
-  max-width: 520px;
-  line-height: 1.8;
-  margin-bottom: 2.5rem;
-  opacity: 0;
-  animation: fadeUp 0.6s 0.3s forwards;
-}
-
-.hero-cmd {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  padding: 10px 18px;
-  border-radius: 4px;
-  font-size: 13px;
-  color: var(--text2);
-  opacity: 0;
-  animation: fadeUp 0.6s 0.4s forwards;
-}
-
-.hero-cmd .cmd-text { color: var(--green); }
-.hero-cmd .cmd-arg { color: var(--amber); }
-
-.hero-grid {
-  position: absolute;
-  right: -60px;
-  top: 60px;
-  width: 320px;
-  height: 320px;
-  opacity: 0.04;
-  background-image:
-    linear-gradient(var(--green) 1px, transparent 1px),
-    linear-gradient(90deg, var(--green) 1px, transparent 1px);
-  background-size: 32px 32px;
-  pointer-events: none;
-}
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ── STAT BAR ── */
-.stat-bar {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg2);
-  padding: 0;
-  display: flex;
-  overflow: hidden;
-}
-
-.stat-item {
-  flex: 1;
-  padding: 1.5rem 2rem;
-  border-right: 1px solid var(--border);
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-item:last-child { border-right: none; }
-
-.stat-item::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 100%; height: 2px;
-  background: var(--green);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.4s;
-}
-
-.stat-item:hover::after { transform: scaleX(1); }
-
-.stat-n {
-  font-family: var(--display);
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--green);
-  line-height: 1;
+.header h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f0f4f8;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
 }
 
-.stat-l {
-  font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* ── MAIN CONVERTER ── */
-.converter-section {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 5rem 2rem;
-}
-
-.section-label {
-  font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.section-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
+.header p {
+  font-size: 0.75rem;
+  color: #6b7a8a;
+  font-weight: 400;
 }
 
 /* DROP ZONE */
 .drop-zone {
-  border: 1px dashed var(--border2);
-  border-radius: 6px;
-  padding: 4rem 2rem;
+  border: 1.5px dashed #2a3540;
+  border-radius: 10px;
+  padding: 3.5rem 2rem;
   text-align: center;
   cursor: pointer;
   position: relative;
+  background: #141a1f;
   transition: border-color 0.2s, background 0.2s;
-  background: var(--bg2);
-  overflow: hidden;
-}
-
-.drop-zone::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--green-faint2);
-  opacity: 0;
-  transition: opacity 0.2s;
+  margin-bottom: 1rem;
 }
 
 .drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--green-dim);
-  background: var(--bg3);
+  border-color: #3d8bcd;
+  background: #141e28;
 }
-
-.drop-zone:hover::before, .drop-zone.drag-over::before { opacity: 1; }
 
 .drop-zone input[type=file] {
   position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
 }
 
-.drop-ascii {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text3);
+.drop-icon {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #8a9bb0;
   margin-bottom: 1.25rem;
-  font-family: var(--mono);
-  user-select: none;
+  letter-spacing: 0.1em;
 }
-
-.drop-ascii .hi { color: var(--green-dim); }
 
 .drop-main {
-  font-size: 14px;
-  color: var(--text2);
-  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #c8d4e0;
+  margin-bottom: 5px;
 }
 
-.drop-main strong { color: var(--text); }
-
-.drop-hint {
-  font-size: 11px;
-  color: var(--text3);
+.drop-sub {
+  font-size: 0.75rem;
+  color: #4a5a6a;
 }
 
 /* FILE CHIP */
 .file-chip {
   display: none;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  border-radius: 4px;
-  margin-top: 12px;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #141a1f;
+  border: 1px solid #1e2d3a;
+  border-radius: 8px;
+  margin-bottom: 1rem;
 }
-
 .file-chip.visible { display: flex; }
-
-.chip-icon {
-  width: 32px; height: 32px;
-  background: var(--green-faint);
-  border: 1px solid rgba(61,220,132,0.2);
-  border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
+.chip-tag {
   font-size: 10px;
-  color: var(--green);
   font-weight: 700;
-  flex-shrink: 0;
-}
-
-.chip-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chip-size {
-  font-size: 11px;
-  color: var(--text3);
-  flex-shrink: 0;
-}
-
-.chip-remove {
-  background: none;
-  border: none;
-  color: var(--text3);
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  padding: 0 4px;
-  transition: color 0.15s;
-}
-
-.chip-remove:hover { color: var(--red); }
-
-/* OPTIONS */
-.options-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
+  color: #58a6ff;
+  background: rgba(88,166,255,0.1);
+  border: 1px solid rgba(88,166,255,0.2);
+  padding: 3px 8px;
   border-radius: 4px;
-  margin-top: 1.5rem;
-  overflow: hidden;
+  flex-shrink: 0;
+}
+.chip-name { flex: 1; font-size: 12px; color: #c8d4e0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-size { font-size: 11px; color: #4a5a6a; flex-shrink: 0; }
+.chip-x { background: none; border: none; color: #4a5a6a; cursor: pointer; font-size: 16px; padding: 0 2px; transition: color 0.15s; }
+.chip-x:hover { color: #ff6b6b; }
+
+/* OPTIONS GRID */
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 1rem;
 }
 
-.opt-block {
-  background: var(--bg2);
-  padding: 1.25rem 1.5rem;
+.opt-card {
+  background: #141a1f;
+  border: 1px solid #1e2d3a;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
 }
 
 .opt-key {
   font-size: 10px;
-  color: var(--text3);
+  font-weight: 700;
+  color: #4a5a6a;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.opt-block input[type=text] {
+.opt-card input[type=text] {
   width: 100%;
-  background: var(--bg4);
-  border: 1px solid var(--border2);
-  border-radius: 3px;
-  padding: 7px 10px;
-  font-family: var(--mono);
+  background: #0e1012;
+  border: 1px solid #1e2d3a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: var(--text);
+  color: #c8d4e0;
   outline: none;
   transition: border-color 0.15s;
 }
+.opt-card input[type=text]:focus { border-color: #3d8bcd; }
+.opt-card input[type=text]::placeholder { color: #2e3d4a; }
 
-.opt-block input[type=text]:focus { border-color: var(--green-dim); }
-.opt-block input[type=text]::placeholder { color: var(--text3); }
-
-.toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.toggle-row:last-child { margin-bottom: 0; }
+.tog-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tog-row:last-child { margin-bottom: 0; }
 
 .tog {
   appearance: none;
   width: 36px; height: 20px;
   border-radius: 10px;
-  background: var(--bg4);
-  border: 1px solid var(--border2);
+  background: #1e2d3a;
   cursor: pointer;
   position: relative;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s;
   flex-shrink: 0;
+  border: none;
 }
-
-.tog:checked { background: var(--green-dim); border-color: var(--green-dim); }
-
+.tog:checked { background: #2563eb; }
 .tog::after {
   content: '';
   position: absolute;
   width: 14px; height: 14px;
   border-radius: 50%;
-  background: var(--text3);
-  top: 2px; left: 2px;
+  background: #4a5a6a;
+  top: 3px; left: 3px;
   transition: left 0.15s, background 0.15s;
 }
+.tog:checked::after { left: 19px; background: #fff; }
 
-.tog:checked::after { left: 18px; background: #fff; }
+.tog-label { font-size: 12px; color: #8a9bb0; }
 
-.tog-label { font-size: 12px; color: var(--text2); }
-
-/* CONVERT BUTTON */
+/* CONVERT BTN */
 .convert-btn {
   width: 100%;
-  margin-top: 1.5rem;
-  padding: 15px;
-  background: transparent;
-  border: 1px solid var(--green-dim);
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 13px;
+  padding: 13px;
+  background: #141a1f;
+  border: 1px solid #2a3a4a;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--green);
+  color: #6b7a8a;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.15s;
+  margin-bottom: 1rem;
 }
-
-.convert-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--green);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s;
-  z-index: 0;
-}
-
-.convert-btn:hover:not(:disabled)::before { transform: scaleX(1); }
-.convert-btn:hover:not(:disabled) { color: var(--bg); }
-.convert-btn span { position: relative; z-index: 1; }
-.convert-btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: var(--border2); color: var(--text3); }
-
-.convert-btn.running {
-  border-color: var(--amber);
-  color: var(--amber);
-  pointer-events: none;
-}
-
-.convert-btn.running::before { transform: none; }
+.convert-btn:hover:not(:disabled) { border-color: #3d8bcd; color: #c8d4e0; background: #141e28; }
+.convert-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.convert-btn.ready { border-color: #2a3a4a; color: #c8d4e0; }
+.convert-btn.running { border-color: #f59e0b; color: #f59e0b; }
 
 /* LOG */
-.log-wrap {
-  margin-top: 1.5rem;
+.log-panel {
   display: none;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  background: #0e1012;
+  border: 1px solid #1e2d3a;
+  border-radius: 8px;
   overflow: hidden;
+  margin-bottom: 1rem;
 }
+.log-panel.visible { display: block; }
 
-.log-wrap.visible { display: block; }
-
-.log-header {
-  background: var(--bg3);
-  border-bottom: 1px solid var(--border);
-  padding: 8px 14px;
+.log-bar {
+  background: #141a1f;
+  border-bottom: 1px solid #1e2d3a;
+  padding: 6px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-
-.log-title {
-  font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.log-dots {
-  display: flex;
-  gap: 5px;
-}
-
-.log-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-}
-
-.log-dot:nth-child(1) { background: var(--red); }
-.log-dot:nth-child(2) { background: var(--amber); }
-.log-dot:nth-child(3) { background: var(--green); }
+.log-bar-label { font-size: 10px; color: #2e3d4a; text-transform: uppercase; letter-spacing: 0.1em; }
+.log-dots { display: flex; gap: 5px; }
+.log-dot { width: 8px; height: 8px; border-radius: 50%; }
+.log-dot:nth-child(1) { background: #ff5f57; }
+.log-dot:nth-child(2) { background: #ffbd2e; }
+.log-dot:nth-child(3) { background: #28c840; }
 
 .log-body {
-  background: var(--bg);
-  padding: 14px;
-  max-height: 200px;
+  padding: 12px 14px;
+  max-height: 160px;
   overflow-y: auto;
-  font-size: 12px;
-  line-height: 1.8;
+  font-size: 11px;
+  line-height: 1.9;
 }
+.log-body::-webkit-scrollbar { width: 3px; }
+.log-body::-webkit-scrollbar-thumb { background: #1e2d3a; }
 
-.log-body::-webkit-scrollbar { width: 4px; }
-.log-body::-webkit-scrollbar-track { background: transparent; }
-.log-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-.log-line::before { content: '  '; }
-.log-line.ok { color: var(--green); }
-.log-line.ok::before { content: '✓ '; }
-.log-line.warn { color: var(--amber); }
-.log-line.warn::before { content: '! '; }
-.log-line.err { color: var(--red); }
-.log-line.err::before { content: '✗ '; }
-.log-line.info { color: var(--text2); }
-.log-line.info::before { content: '» '; }
+.ll { color: #4a5a6a; }
+.ll::before { content: '  '; }
+.ll.ok { color: #28c840; }
+.ll.ok::before { content: '✓ '; }
+.ll.warn { color: #ffbd2e; }
+.ll.warn::before { content: '! '; }
+.ll.err { color: #ff5f57; }
+.ll.err::before { content: '✗ '; }
 
 /* RESULT */
 .result-panel {
   display: none;
-  margin-top: 1.5rem;
-  background: var(--bg2);
-  border: 1px solid rgba(61,220,132,0.25);
-  border-radius: 6px;
+  background: #141a1f;
+  border: 1px solid rgba(40,200,64,0.2);
+  border-radius: 8px;
   overflow: hidden;
 }
-
 .result-panel.visible { display: block; }
 
-.result-header {
-  background: rgba(61,220,132,0.06);
-  border-bottom: 1px solid rgba(61,220,132,0.15);
-  padding: 14px 20px;
+.result-top {
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  border-bottom: 1px solid #1e2d3a;
 }
-
-.result-icon {
-  width: 36px; height: 36px;
-  background: rgba(61,220,132,0.12);
-  border: 1px solid rgba(61,220,132,0.25);
-  border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px;
-  color: var(--green);
+.res-icon {
+  font-size: 10px;
   font-weight: 700;
+  color: #28c840;
+  background: rgba(40,200,64,0.08);
+  border: 1px solid rgba(40,200,64,0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
   flex-shrink: 0;
 }
-
-.result-meta { flex: 1; }
-
-.result-name {
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-
-.result-info {
-  font-size: 11px;
-  color: var(--text3);
-}
-
+.res-meta { flex: 1; }
+.res-name { font-size: 12px; color: #c8d4e0; font-weight: 500; }
+.res-info { font-size: 10px; color: #4a5a6a; margin-top: 1px; }
 .dl-btn {
-  padding: 8px 18px;
-  background: var(--green);
+  padding: 7px 16px;
+  background: #28c840;
   border: none;
-  border-radius: 3px;
-  font-family: var(--mono);
-  font-size: 12px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--bg);
-  letter-spacing: 0.04em;
+  color: #0e1012;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0.04em;
+  transition: background 0.15s;
 }
-
-.dl-btn:hover { background: #55f0a0; }
-.dl-btn:active { transform: scale(0.97); }
+.dl-btn:hover { background: #45d65a; }
 
 .result-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--border);
-  border-top: 1px solid rgba(61,220,132,0.15);
+  border-top: 1px solid #1e2d3a;
 }
-
-.rs-item {
-  background: var(--bg2);
-  padding: 14px 20px;
+.rs {
+  padding: 12px;
   text-align: center;
+  border-right: 1px solid #1e2d3a;
 }
-
-.rs-n {
-  font-family: var(--display);
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--green);
-  line-height: 1;
-  margin-bottom: 3px;
-}
-
-.rs-l {
-  font-size: 10px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* ── HOW IT WORKS ── */
-.how-section {
-  border-top: 1px solid var(--border);
-  background: var(--bg2);
-  padding: 5rem 2rem;
-}
-
-.how-inner {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 2rem;
-}
-
-.step {
-  background: var(--bg2);
-  padding: 2rem 1.75rem;
-  position: relative;
-}
-
-.step-num {
-  font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 1rem;
-}
-
-.step-num span {
-  color: var(--green-dim);
-  font-weight: 700;
-}
-
-.step-title {
-  font-family: var(--display);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 10px;
-}
-
-.step-desc {
-  font-size: 12px;
-  color: var(--text2);
-  line-height: 1.8;
-}
-
-.step-code {
-  margin-top: 14px;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  border-radius: 3px;
-  padding: 10px 12px;
-  font-size: 11px;
-  color: var(--green-dim);
-  line-height: 1.6;
-}
-
-/* ── FORMATS ── */
-.formats-section {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 5rem 2rem;
-}
-
-.formats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 2rem;
-}
-
-.fmt-block {
-  background: var(--bg2);
-  padding: 1.75rem;
-}
-
-.fmt-title {
-  font-size: 12px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.fmt-title::before {
-  content: '';
-  display: block;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--green-dim);
-  flex-shrink: 0;
-}
-
-.fmt-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.fmt-list li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--text2);
-}
-
-.fmt-list li .tag {
-  font-size: 10px;
-  background: var(--bg4);
-  border: 1px solid var(--border2);
-  padding: 2px 7px;
-  border-radius: 2px;
-  color: var(--green-dim);
-  flex-shrink: 0;
-  font-weight: 500;
-}
-
-/* ── FOOTER ── */
-footer {
-  border-top: 1px solid var(--border);
-  background: var(--bg2);
-  padding: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 100%;
-}
-
-.footer-left {
-  font-size: 12px;
-  color: var(--text3);
-}
-
-.footer-left strong { color: var(--green-dim); }
-
-.footer-right {
-  font-size: 11px;
-  color: var(--text3);
-  display: flex;
-  gap: 1.5rem;
-}
-
-/* RESPONSIVE */
-@media (max-width: 700px) {
-  .options-row { grid-template-columns: 1fr; }
-  .steps { grid-template-columns: 1fr; }
-  .formats-grid { grid-template-columns: 1fr; }
-  .result-stats { grid-template-columns: 1fr 1fr; }
-  .stat-bar { flex-direction: column; }
-  .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
-  nav .nav-links { display: none; }
-}
+.rs:last-child { border-right: none; }
+.rs-n { font-size: 1.5rem; font-weight: 700; color: #c8d4e0; line-height: 1; margin-bottom: 3px; }
+.rs-l { font-size: 10px; color: #4a5a6a; text-transform: uppercase; letter-spacing: 0.08em; }
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <div class="nav-logo">md→notebook</div>
-  <ul class="nav-links">
-    <li><a href="#converter">Convert</a></li>
-    <li><a href="#how">How it works</a></li>
-    <li><a href="#formats">Formats</a></li>
-  </ul>
-  <div class="nav-badge">v2.0 — client-side</div>
-</nav>
+<div class="header">
+  <h1>MD → NOTEBOOK</h1>
+  <p>Convert structured lecture markdown to Colab-compatible .ipynb</p>
+</div>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-grid"></div>
-  <div class="hero-eyebrow">Lecture Markdown Converter</div>
-  <h1>Turn .md into<br><span class="accent">.ipynb</span></h1>
-  <p class="hero-sub">
-    Convert structured lecture markdown files into Google Colab-compatible Jupyter notebooks.
-    Handles cue cards, code fences, output blocks, and instructor notes — all in your browser.
-  </p>
-  <div class="hero-cmd">
-    <span>$</span>
-    <span class="cmd-text">python md_to_notebook.py</span>
-    <span class="cmd-arg">lecture.md</span>
-    <span style="color:var(--text3)"># now in your browser</span>
-  </div>
-</section>
+<div class="drop-zone" id="dropZone">
+  <input type="file" id="fileInput" accept=".md,.markdown">
+  <div class="drop-icon">[ .md ]</div>
+  <div class="drop-main">Drop your markdown file here</div>
+  <div class="drop-sub">or click to browse</div>
+</div>
 
-<!-- STAT BAR -->
-<div class="stat-bar">
-  <div class="stat-item">
-    <div class="stat-n">100%</div>
-    <div class="stat-l">Client-side — no upload</div>
+<div class="file-chip" id="fileChip">
+  <span class="chip-tag">.md</span>
+  <span class="chip-name" id="chipName"></span>
+  <span class="chip-size" id="chipSize"></span>
+  <button class="chip-x" id="chipX">×</button>
+</div>
+
+<div class="options-grid">
+  <div class="opt-card">
+    <div class="opt-key">Output Filename</div>
+    <input type="text" id="outName" placeholder="auto (input_generated.ipynb)">
   </div>
-  <div class="stat-item">
-    <div class="stat-n">3</div>
-    <div class="stat-l">Cell types handled</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-n">6+</div>
-    <div class="stat-l">Code fence markers</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-n">Colab</div>
-    <div class="stat-l">Compatible output</div>
+  <div class="opt-card">
+    <div class="opt-key">Quiz Cards</div>
+    <div class="tog-row">
+      <input type="checkbox" class="tog" id="skipQuiz" checked>
+      <span class="tog-label" id="quizLabel">Skip quiz_card sections</span>
+    </div>
+    <div class="tog-row">
+      <input type="checkbox" class="tog" id="stripNotes" checked>
+      <span class="tog-label">Strip instructor notes</span>
+    </div>
   </div>
 </div>
 
-<!-- CONVERTER -->
-<section class="converter-section" id="converter">
-  <div class="section-label">// converter</div>
+<button class="convert-btn" id="convertBtn" disabled>convert to notebook</button>
 
-  <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept=".md,.markdown">
-    <div class="drop-ascii">
-<span class="hi">┌─────────────────────────────┐</span>
-<span class="hi">│</span>   drop your .md file here   <span class="hi">│</span>
-<span class="hi">└─────────────────────────────┘</span>
-    </div>
-    <div class="drop-main"><strong>Drop file</strong> or click to browse</div>
-    <div class="drop-hint">.md · .markdown · max 10 MB</div>
-  </div>
-
-  <div class="file-chip" id="fileChip">
-    <div class="chip-icon">.md</div>
-    <span class="chip-name" id="chipName"></span>
-    <span class="chip-size" id="chipSize"></span>
-    <button class="chip-remove" id="chipRemove" title="Remove">×</button>
-  </div>
-
-  <div class="options-row">
-    <div class="opt-block">
-      <div class="opt-key">// output filename</div>
-      <input type="text" id="outName" placeholder="auto-generated">
-    </div>
-    <div class="opt-block">
-      <div class="opt-key">// quiz cards</div>
-      <div class="toggle-row">
-        <input type="checkbox" class="tog" id="skipQuiz" checked>
-        <span class="tog-label" id="quizLabel">Skip quiz_card sections</span>
-      </div>
-      <div class="toggle-row">
-        <input type="checkbox" class="tog" id="stripNotes" checked>
-        <span class="tog-label">Strip instructor notes</span>
-      </div>
-    </div>
-    <div class="opt-block">
-      <div class="opt-key">// output info</div>
-      <div style="font-size:12px;color:var(--text3);line-height:1.8;">
-        nbformat 4.0<br>
-        Colab provenance<br>
-        Python 3 kernel
-      </div>
+<div class="log-panel" id="logPanel">
+  <div class="log-bar">
+    <span class="log-bar-label">output</span>
+    <div class="log-dots">
+      <div class="log-dot"></div><div class="log-dot"></div><div class="log-dot"></div>
     </div>
   </div>
+  <div class="log-body" id="logBody"></div>
+</div>
 
-  <button class="convert-btn" id="convertBtn" disabled>
-    <span id="btnText">▶ run conversion</span>
-  </button>
-
-  <div class="log-wrap" id="logWrap">
-    <div class="log-header">
-      <span class="log-title">// output</span>
-      <div class="log-dots">
-        <div class="log-dot"></div>
-        <div class="log-dot"></div>
-        <div class="log-dot"></div>
-      </div>
+<div class="result-panel" id="resultPanel">
+  <div class="result-top">
+    <div class="res-icon">.ipynb</div>
+    <div class="res-meta">
+      <div class="res-name" id="resName"></div>
+      <div class="res-info" id="resInfo"></div>
     </div>
-    <div class="log-body" id="logBody"></div>
+    <button class="dl-btn" id="dlBtn">↓ Download</button>
   </div>
-
-  <div class="result-panel" id="resultPanel">
-    <div class="result-header">
-      <div class="result-icon">.ipynb</div>
-      <div class="result-meta">
-        <div class="result-name" id="resName"></div>
-        <div class="result-info" id="resInfo"></div>
-      </div>
-      <button class="dl-btn" id="dlBtn">↓ Download</button>
-    </div>
-    <div class="result-stats">
-      <div class="rs-item"><div class="rs-n" id="rsTotal">0</div><div class="rs-l">total cells</div></div>
-      <div class="rs-item"><div class="rs-n" id="rsCode">0</div><div class="rs-l">code cells</div></div>
-      <div class="rs-item"><div class="rs-n" id="rsMd">0</div><div class="rs-l">markdown cells</div></div>
-    </div>
+  <div class="result-stats">
+    <div class="rs"><div class="rs-n" id="rsTotal">0</div><div class="rs-l">Total Cells</div></div>
+    <div class="rs"><div class="rs-n" id="rsCode">0</div><div class="rs-l">Code Cells</div></div>
+    <div class="rs"><div class="rs-n" id="rsMd">0</div><div class="rs-l">Markdown</div></div>
   </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section class="how-section" id="how">
-  <div class="how-inner">
-    <div class="section-label">// how it works</div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">Step <span>01</span></div>
-        <div class="step-title">Structure detection</div>
-        <div class="step-desc">The file is split on <code style="color:var(--green-dim)">---</code> separators into sections. Each section's frontmatter is parsed for <code style="color:var(--amber)">card_type</code> and <code style="color:var(--amber)">title</code>.</div>
-        <div class="step-code">card_type: cue_card<br>title: Introduction to NumPy<br>---<br>content here…</div>
-      </div>
-      <div class="step">
-        <div class="step-num">Step <span>02</span></div>
-        <div class="step-title">Cell classification</div>
-        <div class="step-desc">A line-by-line state machine classifies each code fence. Python fences become code cells. Bash/output fences become expected-output blocks.</div>
-        <div class="step-code">```python → code cell<br>```bash   → output block<br>```output → output block<br>plain text → markdown cell</div>
-      </div>
-      <div class="step">
-        <div class="step-num">Step <span>03</span></div>
-        <div class="step-title">Notebook assembly</div>
-        <div class="step-desc">Cells are assembled into nbformat 4 JSON with Colab metadata, a Python 3 kernelspec, and unique cell IDs. The .ipynb downloads instantly.</div>
-        <div class="step-code">{<br>  "nbformat": 4,<br>  "metadata": {<br>    "colab": {…}<br>  },<br>  "cells": […]<br>}</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FORMATS -->
-<section class="formats-section" id="formats">
-  <div class="section-label">// supported formats</div>
-  <div class="formats-grid">
-    <div class="fmt-block">
-      <div class="fmt-title">Code cell fences</div>
-      <ul class="fmt-list">
-        <li><span class="tag">```python</span> Standard Python fence</li>
-        <li><span class="tag">```python!</span> Runnable variant</li>
-        <li><span class="tag">```python=</span> Display variant</li>
-        <li><span class="tag">```py</span> Short alias</li>
-        <li><span class="tag">```python3</span> Explicit Python 3</li>
-      </ul>
-    </div>
-    <div class="fmt-block">
-      <div class="fmt-title">Output / markdown fences</div>
-      <ul class="fmt-list">
-        <li><span class="tag">```bash</span> Becomes expected output block</li>
-        <li><span class="tag">```output</span> Direct output annotation</li>
-        <li><span class="tag">```text</span> Plaintext output</li>
-        <li><span class="tag">```shell</span> Shell output</li>
-        <li><span class="tag">```console</span> Console output</li>
-      </ul>
-    </div>
-    <div class="fmt-block">
-      <div class="fmt-title">Card types</div>
-      <ul class="fmt-list">
-        <li><span class="tag">cue_card</span> Converted → cells</li>
-        <li><span class="tag">quiz_card</span> Skipped (instructor-only)</li>
-      </ul>
-    </div>
-    <div class="fmt-block">
-      <div class="fmt-title">Stripped content</div>
-      <ul class="fmt-list">
-        <li><span class="tag">[Note to Instructor]</span> Span + blockquote removed</li>
-        <li><span class="tag">[Ask Learners]</span> Span + blockquote removed</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-left">
-    <strong>md→notebook</strong> — runs entirely in your browser. No data leaves your machine.
-  </div>
-  <div class="footer-right">
-    <span>nbformat 4.0</span>
-    <span>Google Colab compatible</span>
-    <span>Python 3 kernel</span>
-  </div>
-</footer>
+</div>
 
 <script>
-// ── CONVERTER LOGIC ──
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const fileChip = document.getElementById('fileChip');
-const chipName = document.getElementById('chipName');
-const chipSize = document.getElementById('chipSize');
-const chipRemove = document.getElementById('chipRemove');
-const convertBtn = document.getElementById('convertBtn');
-const btnText = document.getElementById('btnText');
-const logWrap = document.getElementById('logWrap');
-const logBody = document.getElementById('logBody');
-const resultPanel = document.getElementById('resultPanel');
-const resName = document.getElementById('resName');
-const resInfo = document.getElementById('resInfo');
-const dlBtn = document.getElementById('dlBtn');
-const skipQuiz = document.getElementById('skipQuiz');
-const stripNotes = document.getElementById('stripNotes');
-const outName = document.getElementById('outName');
+const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput'),
+fileChip=document.getElementById('fileChip'),chipName=document.getElementById('chipName'),
+chipSize=document.getElementById('chipSize'),chipX=document.getElementById('chipX'),
+convertBtn=document.getElementById('convertBtn'),logPanel=document.getElementById('logPanel'),
+logBody=document.getElementById('logBody'),resultPanel=document.getElementById('resultPanel'),
+resName=document.getElementById('resName'),resInfo=document.getElementById('resInfo'),
+dlBtn=document.getElementById('dlBtn'),skipQuiz=document.getElementById('skipQuiz'),
+stripNotes=document.getElementById('stripNotes'),outName=document.getElementById('outName');
 
-let currentFile = null, notebookBlob = null, outputFilename = '';
+let currentFile=null,notebookBlob=null,outputFilename='';
 
-function fmt(b) { return b < 1024 ? b + ' B' : (b/1024).toFixed(1) + ' KB'; }
+function fmt(b){return b<1024?b+' B':(b/1024).toFixed(1)+' KB';}
+function log(msg,type=''){
+  logPanel.classList.add('visible');
+  const d=document.createElement('div');d.className='ll '+type;d.textContent=msg;
+  logBody.appendChild(d);logBody.scrollTop=logBody.scrollHeight;
+}
+function clearLog(){logBody.innerHTML='';logPanel.classList.remove('visible');}
 
-function log(msg, type='info') {
-  logWrap.classList.add('visible');
-  const d = document.createElement('div');
-  d.className = 'log-line ' + type;
-  d.textContent = msg;
-  logBody.appendChild(d);
-  logBody.scrollTop = logBody.scrollHeight;
+function setFile(file){
+  if(!file||!file.name.match(/\.(md|markdown)$/i)){log('Only .md/.markdown files supported','err');logPanel.classList.add('visible');return;}
+  currentFile=file;chipName.textContent=file.name;chipSize.textContent=fmt(file.size);
+  fileChip.classList.add('visible');convertBtn.disabled=false;convertBtn.classList.add('ready');
+  resultPanel.classList.remove('visible');clearLog();log('Loaded: '+file.name,'ok');
+  outName.placeholder=file.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');
 }
 
-function clearLog() { logBody.innerHTML = ''; logWrap.classList.remove('visible'); }
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
+fileInput.addEventListener('change',e=>{if(e.target.files[0])setFile(e.target.files[0]);});
+chipX.addEventListener('click',()=>{currentFile=null;fileChip.classList.remove('visible');convertBtn.disabled=true;convertBtn.classList.remove('ready');fileInput.value='';clearLog();resultPanel.classList.remove('visible');});
+skipQuiz.addEventListener('change',()=>{document.getElementById('quizLabel').textContent=skipQuiz.checked?'Skip quiz_card sections':'Include quiz_card sections';});
 
-function setFile(file) {
-  if (!file || !file.name.match(/\.(md|markdown)$/i)) {
-    log('Only .md / .markdown files are supported', 'err');
-    logWrap.classList.add('visible');
-    return;
+function makeId(){return Math.random().toString(36).slice(2,10);}
+function toLines(t){const l=t.split('\n').map(x=>x+'\n');if(l.length)l[l.length-1]=l[l.length-1].replace(/\n$/,'');return l;}
+function mdCell(s){return{cell_type:'markdown',source:toLines(s),metadata:{id:makeId()}};}
+function codeCell(s){return{cell_type:'code',source:toLines(s),metadata:{id:makeId()},execution_count:null,outputs:[]};}
+const CODE=new Set(['python','py','python3']),OUT=new Set(['bash','sh','shell','console','output','text','plaintext','plain','']);
+function classifyFence(line){let l=line.replace(/^`+/,'').replace(/[=!]+$/,'').toLowerCase().trim();if(CODE.has(l))return'code';if(OUT.has(l))return'output';return'skip';}
+function stripNotesFn(t){return t.replace(/<span[^>]*>\s*\*\*\[(?:Note to Instructor|Ask Learners)\][^<]*\*\*\s*<\/span>\s*\n?(?:>.*\n?)*/g,'').trim();}
+function parseFM(block){const fm={},lines=block.replace(/^\n/,'').split('\n');let bs=0;for(let i=0;i<lines.length;i++){const m=lines[i].match(/^(\w+):\s*(.*)/);if(m){fm[m[1]]=m[2].trim();bs=i+1;}else break;}return{fm,body:lines.slice(bs).join('\n').trim()};}
+function bodyToCells(body,doStrip){
+  const cells=[];let state='text',buf=[];
+  function flush(){const c=buf.join('\n').trim();buf=[];if(!c)return;
+    if(state==='text'){const x=doStrip?stripNotesFn(c):c;if(x)cells.push(mdCell(x));}
+    else if(state==='code')cells.push(codeCell(c));
+    else if(state==='output')cells.push(mdCell('**Expected output:**\n```\n'+c+'\n```'));}
+  for(const line of body.split('\n')){
+    if(state==='text'&&/^```/.test(line)){flush();state=classifyFence(line);continue;}
+    if(state!=='text'&&/^```\s*$/.test(line)){flush();state='text';continue;}
+    buf.push(line);}
+  if(state==='text')flush();return cells;
+}
+function convertMd(text){
+  const secs=text.split(/\n---\n/),title=secs[0].trim().replace(/^#+\s*/,'');
+  const cells=[mdCell('# '+title)];let skipped=0;
+  for(const raw of secs.slice(1)){
+    const{fm,body}=parseFM(raw);
+    if(skipQuiz.checked&&(fm.card_type||'cue_card')==='quiz_card'){skipped++;continue;}
+    if(!body.trim())continue;
+    if(fm.title)cells.push(mdCell('## '+fm.title));
+    cells.push(...bodyToCells(body,stripNotes.checked));
   }
-  currentFile = file;
-  chipName.textContent = file.name;
-  chipSize.textContent = fmt(file.size);
-  fileChip.classList.add('visible');
-  convertBtn.disabled = false;
+  return{cells,skipped};
+}
+
+convertBtn.addEventListener('click',async()=>{
+  if(!currentFile)return;
+  clearLog();convertBtn.disabled=true;convertBtn.classList.add('running');convertBtn.textContent='converting…';
   resultPanel.classList.remove('visible');
-  clearLog();
-  log('Loaded: ' + file.name, 'ok');
-  outName.placeholder = file.name.replace(/\.(md|markdown)$/i, '_generated.ipynb');
-}
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) setFile(f); });
-fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
-chipRemove.addEventListener('click', () => {
-  currentFile = null;
-  fileChip.classList.remove('visible');
-  convertBtn.disabled = true;
-  fileInput.value = '';
-  clearLog();
-  resultPanel.classList.remove('visible');
-});
-skipQuiz.addEventListener('change', () => {
-  document.getElementById('quizLabel').textContent = skipQuiz.checked ? 'Skip quiz_card sections' : 'Include quiz_card sections';
-});
-
-// ── PARSE ENGINE (mirrors Python script) ──
-function makeId() { return Math.random().toString(36).slice(2, 10); }
-function toLines(text) {
-  const lines = text.split('\n').map(l => l + '\n');
-  if (lines.length) lines[lines.length-1] = lines[lines.length-1].replace(/\n$/, '');
-  return lines;
-}
-function mdCell(src) { return { cell_type:'markdown', source:toLines(src), metadata:{id:makeId()} }; }
-function codeCell(src) { return { cell_type:'code', source:toLines(src), metadata:{id:makeId()}, execution_count:null, outputs:[] }; }
-
-const CODE_LANGS = new Set(['python','py','python3']);
-const OUT_LANGS  = new Set(['bash','sh','shell','console','output','text','plaintext','plain','']);
-
-function classifyFence(line) {
-  let lang = line.replace(/^`+/,'').replace(/[=!]+$/,'').toLowerCase().trim();
-  if (CODE_LANGS.has(lang)) return 'code';
-  if (OUT_LANGS.has(lang))  return 'output';
-  return 'skip';
-}
-
-function stripInstructorNotes(text) {
-  return text.replace(/<span[^>]*>\s*\*\*\[(?:Note to Instructor|Ask Learners)\][^<]*\*\*\s*<\/span>\s*\n?(?:>.*\n?)*/g,'').trim();
-}
-
-function parseFrontmatter(block) {
-  const fm = {}, lines = block.replace(/^\n/,'').split('\n');
-  let bodyStart = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^(\w+):\s*(.*)/);
-    if (m) { fm[m[1]] = m[2].trim(); bodyStart = i+1; } else break;
-  }
-  return { fm, body: lines.slice(bodyStart).join('\n').trim() };
-}
-
-function bodyToCells(body, doStrip) {
-  const cells = []; let state = 'text', buffer = [];
-  function flush() {
-    const content = buffer.join('\n').trim(); buffer = [];
-    if (!content) return;
-    if (state === 'text') {
-      const c = doStrip ? stripInstructorNotes(content) : content;
-      if (c) cells.push(mdCell(c));
-    } else if (state === 'code') {
-      cells.push(codeCell(content));
-    } else if (state === 'output') {
-      cells.push(mdCell('**Expected output:**\n```\n' + content + '\n```'));
-    }
-  }
-  for (const line of body.split('\n')) {
-    if (state === 'text' && /^```/.test(line)) { flush(); state = classifyFence(line); continue; }
-    if (state !== 'text' && /^```\s*$/.test(line)) { flush(); state = 'text'; continue; }
-    buffer.push(line);
-  }
-  if (state === 'text') flush();
-  return cells;
-}
-
-function convertMd(mdText) {
-  const sections = mdText.split(/\n---\n/);
-  const title = sections[0].trim().replace(/^#+\s*/,'');
-  const cells = [mdCell('# ' + title)];
-  let skipped = 0;
-  for (const raw of sections.slice(1)) {
-    const { fm, body } = parseFrontmatter(raw);
-    if (skipQuiz.checked && (fm.card_type||'cue_card') === 'quiz_card') { skipped++; continue; }
-    if (!body.trim()) continue;
-    if (fm.title) cells.push(mdCell('## ' + fm.title));
-    cells.push(...bodyToCells(body, stripNotes.checked));
-  }
-  return { cells, skipped };
-}
-
-convertBtn.addEventListener('click', async () => {
-  if (!currentFile) return;
-  clearLog();
-  convertBtn.disabled = true;
-  convertBtn.classList.add('running');
-  btnText.textContent = '⟳ converting…';
-  resultPanel.classList.remove('visible');
-
-  log('Reading ' + currentFile.name + ' (' + fmt(currentFile.size) + ')', 'info');
-  const text = await currentFile.text();
-  const lineCount = text.split('\n').length;
-  await new Promise(r => setTimeout(r, 60));
-
-  log('Parsed ' + lineCount + ' lines', 'info');
-  const sectionCount = (text.match(/\n---\n/g)||[]).length + 1;
-  log('Found ' + sectionCount + ' section(s)', 'info');
-  await new Promise(r => setTimeout(r, 60));
-
-  log('Running cell classifier…', 'info');
-  const { cells, skipped } = convertMd(text);
-  await new Promise(r => setTimeout(r, 60));
-
-  const codeCount = cells.filter(c => c.cell_type === 'code').length;
-  const mdCount   = cells.filter(c => c.cell_type === 'markdown').length;
-
-  if (skipped > 0) log('Skipped ' + skipped + ' quiz_card section(s)', 'warn');
-  log('Generated ' + cells.length + ' cells (' + codeCount + ' code · ' + mdCount + ' markdown)', 'ok');
-
-  const notebook = {
-    nbformat: 4, nbformat_minor: 0,
-    metadata: {
-      colab: { provenance:[] },
-      kernelspec: { name:'python3', display_name:'Python 3' },
-      language_info: { name:'python' }
-    },
-    cells
-  };
-
-  const json = JSON.stringify(notebook, null, 2);
-  notebookBlob = new Blob([json], { type:'application/json' });
-  const suggested = outName.value.trim() || outName.placeholder || currentFile.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');
-  outputFilename = suggested.endsWith('.ipynb') ? suggested : suggested + '.ipynb';
-
-  resName.textContent = outputFilename;
-  resInfo.textContent = cells.length + ' cells · ' + fmt(notebookBlob.size) + ' · nbformat 4.0';
-  document.getElementById('rsTotal').textContent = cells.length;
-  document.getElementById('rsCode').textContent  = codeCount;
-  document.getElementById('rsMd').textContent    = mdCount;
+  log('Reading '+currentFile.name+' ('+fmt(currentFile.size)+')');
+  const text=await currentFile.text();
+  log('Parsed '+text.split('\n').length+' lines');
+  await new Promise(r=>setTimeout(r,60));
+  const secs=(text.match(/\n---\n/g)||[]).length+1;
+  log('Found '+secs+' section(s)');
+  await new Promise(r=>setTimeout(r,60));
+  const{cells,skipped}=convertMd(text);
+  const cc=cells.filter(c=>c.cell_type==='code').length,mc=cells.filter(c=>c.cell_type==='markdown').length;
+  if(skipped>0)log('Skipped '+skipped+' quiz_card(s)','warn');
+  log('Generated '+cells.length+' cells ('+cc+' code · '+mc+' markdown)','ok');
+  const nb={nbformat:4,nbformat_minor:0,metadata:{colab:{provenance:[]},kernelspec:{name:'python3',display_name:'Python 3'},language_info:{name:'python'}},cells};
+  notebookBlob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
+  const sug=outName.value.trim()||outName.placeholder||currentFile.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');
+  outputFilename=sug.endsWith('.ipynb')?sug:sug+'.ipynb';
+  resName.textContent=outputFilename;resInfo.textContent=cells.length+' cells · '+fmt(notebookBlob.size)+' · nbformat 4.0';
+  document.getElementById('rsTotal').textContent=cells.length;
+  document.getElementById('rsCode').textContent=cc;
+  document.getElementById('rsMd').textContent=mc;
   resultPanel.classList.add('visible');
-
-  log('Notebook ready → ' + outputFilename, 'ok');
-  convertBtn.classList.remove('running');
-  btnText.textContent = '▶ run conversion';
-  convertBtn.disabled = false;
+  log('Ready → '+outputFilename,'ok');
+  convertBtn.classList.remove('running');convertBtn.textContent='convert to notebook';
+  convertBtn.disabled=false;convertBtn.classList.add('ready');
 });
 
-dlBtn.addEventListener('click', () => {
-  if (!notebookBlob) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(notebookBlob);
-  a.download = outputFilename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  log('Downloaded: ' + outputFilename, 'ok');
-});
-
-// ── SCROLL ANIMATION ──
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => { if (e.isIntersecting) e.target.style.opacity = '1'; });
-}, { threshold: 0.1 });
-
-document.querySelectorAll('.step, .fmt-block, .stat-item').forEach(el => {
-  el.style.opacity = '0';
-  el.style.transition = 'opacity 0.5s';
-  observer.observe(el);
+dlBtn.addEventListener('click',()=>{
+  if(!notebookBlob)return;
+  const a=document.createElement('a');a.href=URL.createObjectURL(notebookBlob);a.download=outputFilename;a.click();URL.revokeObjectURL(a.href);
+  log('Downloaded: '+outputFilename,'ok');
 });
 </script>
 </body>
