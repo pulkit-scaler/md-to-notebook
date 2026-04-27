@@ -412,7 +412,8 @@ function bodyToCells(body,doStrip){
   function flush(){const c=buf.join('\n').trim();buf=[];if(!c)return;
     if(state==='text'){const x=doStrip?stripNotesFn(c):c;if(x)cells.push(mdCell(x));}
     else if(state==='code')cells.push(codeCell(c));
-    else if(state==='output')cells.push(mdCell('**Expected output:**\n```\n'+c+'\n```'));}
+    // state === 'output' and state === 'skip': silently drop
+  }
   for(const line of body.split('\n')){
     if(state==='text'&&/^```/.test(line)){flush();state=classifyFence(line);continue;}
     if(state!=='text'&&/^```\s*$/.test(line)){flush();state='text';continue;}
