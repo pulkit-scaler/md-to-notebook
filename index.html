@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MD → NOTEBOOK</title>
+<title>MD ↔ NOTEBOOK</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,7 +19,34 @@ body {
 }
 
 /* HEADER */
-.header { margin-bottom: 2rem; }
+.header { margin-bottom: 1.25rem; }
+
+/* MODE SWITCH */
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  background: #141a1f;
+  border: 1px solid #1e2d3a;
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 1.25rem;
+}
+.mode-btn {
+  flex: 1;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7a8a;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mode-btn:hover { color: #c8d4e0; }
+.mode-btn.active { background: #0e1012; color: #f0f4f8; border: 1px solid #2a3a4a; }
 
 .header h1 {
   font-size: 1.1rem;
@@ -300,19 +327,24 @@ body {
 <body>
 
 <div class="header">
-  <h1>MD → NOTEBOOK</h1>
-  <p>Convert structured lecture markdown to Colab-compatible .ipynb</p>
+  <h1 id="headerTitle">MD → NOTEBOOK</h1>
+  <p id="headerSub">Convert structured lecture markdown to Colab-compatible .ipynb</p>
+</div>
+
+<div class="mode-switch">
+  <button class="mode-btn active" id="modeFwd" data-mode="md2nb">MD → NOTEBOOK</button>
+  <button class="mode-btn" id="modeRev" data-mode="nb2md">NOTEBOOK → MD</button>
 </div>
 
 <div class="drop-zone" id="dropZone">
   <input type="file" id="fileInput" accept=".md,.markdown">
-  <div class="drop-icon">[ .md ]</div>
-  <div class="drop-main">Drop your markdown file here</div>
+  <div class="drop-icon" id="dropIcon">[ .md ]</div>
+  <div class="drop-main" id="dropMain">Drop your markdown file here</div>
   <div class="drop-sub">or click to browse</div>
 </div>
 
 <div class="file-chip" id="fileChip">
-  <span class="chip-tag">.md</span>
+  <span class="chip-tag" id="chipTag">.md</span>
   <span class="chip-name" id="chipName"></span>
   <span class="chip-size" id="chipSize"></span>
   <button class="chip-x" id="chipX">×</button>
@@ -323,7 +355,7 @@ body {
     <div class="opt-key">Output Filename</div>
     <input type="text" id="outName" placeholder="auto (input_generated.ipynb)">
   </div>
-  <div class="opt-card">
+  <div class="opt-card" id="optMdOnly">
     <div class="opt-key">Quiz Cards</div>
     <div class="tog-row">
       <input type="checkbox" class="tog" id="skipQuiz" checked>
@@ -332,6 +364,17 @@ body {
     <div class="tog-row">
       <input type="checkbox" class="tog" id="stripNotes" checked>
       <span class="tog-label">Strip instructor notes</span>
+    </div>
+  </div>
+  <div class="opt-card" id="optNbOnly" style="display:none;">
+    <div class="opt-key">Markdown Output</div>
+    <div class="tog-row">
+      <input type="checkbox" class="tog" id="includeOutputs">
+      <span class="tog-label">Include code cell outputs</span>
+    </div>
+    <div class="tog-row">
+      <input type="checkbox" class="tog" id="defaultCueCard" checked>
+      <span class="tog-label">Tag sections as cue_card</span>
     </div>
   </div>
 </div>
@@ -350,7 +393,7 @@ body {
 
 <div class="result-panel" id="resultPanel">
   <div class="result-top">
-    <div class="res-icon">.ipynb</div>
+    <div class="res-icon" id="resIcon">.ipynb</div>
     <div class="res-meta">
       <div class="res-name" id="resName"></div>
       <div class="res-info" id="resInfo"></div>
@@ -358,23 +401,29 @@ body {
     <button class="dl-btn" id="dlBtn">↓ Download</button>
   </div>
   <div class="result-stats">
-    <div class="rs"><div class="rs-n" id="rsTotal">0</div><div class="rs-l">Total Cells</div></div>
-    <div class="rs"><div class="rs-n" id="rsCode">0</div><div class="rs-l">Code Cells</div></div>
-    <div class="rs"><div class="rs-n" id="rsMd">0</div><div class="rs-l">Markdown</div></div>
+    <div class="rs"><div class="rs-n" id="rsTotal">0</div><div class="rs-l" id="rsTotalLabel">Total Cells</div></div>
+    <div class="rs"><div class="rs-n" id="rsCode">0</div><div class="rs-l" id="rsCodeLabel">Code Cells</div></div>
+    <div class="rs"><div class="rs-n" id="rsMd">0</div><div class="rs-l" id="rsMdLabel">Markdown</div></div>
   </div>
 </div>
 
 <script>
 const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput'),
 fileChip=document.getElementById('fileChip'),chipName=document.getElementById('chipName'),
-chipSize=document.getElementById('chipSize'),chipX=document.getElementById('chipX'),
+chipSize=document.getElementById('chipSize'),chipX=document.getElementById('chipX'),chipTag=document.getElementById('chipTag'),
 convertBtn=document.getElementById('convertBtn'),logPanel=document.getElementById('logPanel'),
 logBody=document.getElementById('logBody'),resultPanel=document.getElementById('resultPanel'),
-resName=document.getElementById('resName'),resInfo=document.getElementById('resInfo'),
+resName=document.getElementById('resName'),resInfo=document.getElementById('resInfo'),resIcon=document.getElementById('resIcon'),
 dlBtn=document.getElementById('dlBtn'),skipQuiz=document.getElementById('skipQuiz'),
-stripNotes=document.getElementById('stripNotes'),outName=document.getElementById('outName');
+stripNotes=document.getElementById('stripNotes'),outName=document.getElementById('outName'),
+modeFwd=document.getElementById('modeFwd'),modeRev=document.getElementById('modeRev'),
+headerTitle=document.getElementById('headerTitle'),headerSub=document.getElementById('headerSub'),
+dropIcon=document.getElementById('dropIcon'),dropMain=document.getElementById('dropMain'),
+optMdOnly=document.getElementById('optMdOnly'),optNbOnly=document.getElementById('optNbOnly'),
+includeOutputs=document.getElementById('includeOutputs'),defaultCueCard=document.getElementById('defaultCueCard'),
+rsTotalLabel=document.getElementById('rsTotalLabel'),rsCodeLabel=document.getElementById('rsCodeLabel'),rsMdLabel=document.getElementById('rsMdLabel');
 
-let currentFile=null,notebookBlob=null,outputFilename='';
+let currentFile=null,outputBlob=null,outputFilename='',mode='md2nb';
 
 function fmt(b){return b<1024?b+' B':(b/1024).toFixed(1)+' KB';}
 function log(msg,type=''){
@@ -384,13 +433,50 @@ function log(msg,type=''){
 }
 function clearLog(){logBody.innerHTML='';logPanel.classList.remove('visible');}
 
+function applyMode(){
+  const fwd=mode==='md2nb';
+  modeFwd.classList.toggle('active',fwd);
+  modeRev.classList.toggle('active',!fwd);
+  headerTitle.textContent=fwd?'MD → NOTEBOOK':'NOTEBOOK → MD';
+  headerSub.textContent=fwd?'Convert structured lecture markdown to Colab-compatible .ipynb':'Convert a Jupyter/Colab notebook back to lecture markdown';
+  dropIcon.textContent=fwd?'[ .md ]':'[ .ipynb ]';
+  dropMain.textContent=fwd?'Drop your markdown file here':'Drop your notebook file here';
+  fileInput.accept=fwd?'.md,.markdown':'.ipynb,.json';
+  chipTag.textContent=fwd?'.md':'.ipynb';
+  resIcon.textContent=fwd?'.ipynb':'.md';
+  convertBtn.textContent=fwd?'convert to notebook':'convert to markdown';
+  optMdOnly.style.display=fwd?'':'none';
+  optNbOnly.style.display=fwd?'none':'';
+  rsTotalLabel.textContent=fwd?'Total Cells':'Sections';
+  rsCodeLabel.textContent=fwd?'Code Cells':'Code Blocks';
+  rsMdLabel.textContent=fwd?'Markdown':'Lines';
+  outName.value='';
+  outName.placeholder=fwd?'auto (input_generated.ipynb)':'auto (input.md)';
+  resultPanel.classList.remove('visible');clearLog();
+  if(currentFile){
+    const ok=fwd?/\.(md|markdown)$/i.test(currentFile.name):/\.(ipynb|json)$/i.test(currentFile.name);
+    if(!ok){currentFile=null;fileChip.classList.remove('visible');convertBtn.disabled=true;convertBtn.classList.remove('ready');fileInput.value='';}
+    else if(fwd){outName.placeholder=currentFile.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');}
+    else{outName.placeholder=currentFile.name.replace(/\.ipynb$/i,'.md');}
+  }
+}
+
 function setFile(file){
-  if(!file||!file.name.match(/\.(md|markdown)$/i)){log('Only .md/.markdown files supported','err');logPanel.classList.add('visible');return;}
+  if(!file)return;
+  const isMd=/\.(md|markdown)$/i.test(file.name),isNb=/\.(ipynb|json)$/i.test(file.name);
+  if(!isMd&&!isNb){log('Only .md, .markdown, or .ipynb files supported','err');logPanel.classList.add('visible');return;}
+  // Auto-switch mode based on dropped file type
+  const wantMode=isMd?'md2nb':'nb2md';
+  if(mode!==wantMode){mode=wantMode;applyMode();}
   currentFile=file;chipName.textContent=file.name;chipSize.textContent=fmt(file.size);
+  chipTag.textContent=isMd?'.md':'.ipynb';
   fileChip.classList.add('visible');convertBtn.disabled=false;convertBtn.classList.add('ready');
   resultPanel.classList.remove('visible');clearLog();log('Loaded: '+file.name,'ok');
-  outName.placeholder=file.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');
+  outName.placeholder=isMd?file.name.replace(/\.(md|markdown)$/i,'_generated.ipynb'):file.name.replace(/\.ipynb$/i,'.md');
 }
+
+modeFwd.addEventListener('click',()=>{if(mode!=='md2nb'){mode='md2nb';applyMode();}});
+modeRev.addEventListener('click',()=>{if(mode!=='nb2md'){mode='nb2md';applyMode();}});
 
 dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
 dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
@@ -420,51 +506,233 @@ function bodyToCells(body,doStrip){
     buf.push(line);}
   if(state==='text')flush();return cells;
 }
+// Line-based tokenizer that supports BOTH formats:
+//  - Optional doc-level YAML wrapper at top:  ---\n title: X \n---
+//  - Optional `# Title` heading
+//  - Section frontmatter with OR without a closing `---`
+//  - `---` lines inside fenced code blocks are not treated as section breaks
 function convertMd(text){
-  const secs=text.split(/\n---\n/),title=secs[0].trim().replace(/^#+\s*/,'');
-  const cells=[mdCell('# '+title)];let skipped=0;
-  for(const raw of secs.slice(1)){
-    const{fm,body}=parseFM(raw);
+  text=text.replace(/\r\n/g,'\n');
+  const lines=text.split('\n');
+  let i=0;
+  const isDash=idx=>idx<lines.length&&/^---\s*$/.test(lines[idx]);
+  const isFenceLine=idx=>idx<lines.length&&/^```/.test(lines[idx]);
+  function skipBlank(){while(i<lines.length&&lines[i].trim()==='')i++;}
+  function readBodyUntilDash(){
+    const start=i;let inFence=false;
+    while(i<lines.length){
+      if(isFenceLine(i)){inFence=!inFence;i++;continue;}
+      if(!inFence&&isDash(i))break;
+      i++;
+    }
+    return lines.slice(start,i).join('\n').replace(/\s+$/,'');
+  }
+
+  let docTitle='Untitled';
+  skipBlank();
+
+  // Optional doc-level YAML block
+  if(isDash(i)){
+    i++;
+    const yamlStart=i;
+    while(i<lines.length&&!isDash(i))i++;
+    const yamlBlock=lines.slice(yamlStart,i).join('\n');
+    if(i<lines.length)i++;
+    const tm=yamlBlock.match(/^title:\s*(.+)$/m);
+    if(tm)docTitle=tm[1].trim();
+  }
+
+  skipBlank();
+
+  // Optional `# Title` heading (overrides doc YAML title)
+  if(i<lines.length&&/^#\s+/.test(lines[i])&&!/^##/.test(lines[i])){
+    docTitle=lines[i].replace(/^#\s+/,'').trim();
+    i++;
+  }
+
+  skipBlank();
+
+  // Optional intro body before the first section
+  const introBody=readBodyUntilDash();
+
+  const cells=[mdCell('# '+docTitle)];
+  if(introBody.trim())cells.push(...bodyToCells(introBody,stripNotes.checked));
+
+  let skipped=0;
+  while(i<lines.length){
+    if(!isDash(i)){i++;continue;}
+    i++;
+    const fm={};
+    while(i<lines.length){
+      if(isDash(i)){i++;break;}
+      const km=lines[i].match(/^(\w+):\s*(.*)$/);
+      if(km){fm[km[1]]=km[2].trim();i++;}
+      else break;
+    }
+    const body=readBodyUntilDash();
     if(skipQuiz.checked&&(fm.card_type||'cue_card')==='quiz_card'){skipped++;continue;}
-    if(!body.trim())continue;
+    if(!body.trim()&&!fm.title)continue;
     if(fm.title)cells.push(mdCell('## '+fm.title));
-    cells.push(...bodyToCells(body,stripNotes.checked));
+    if(body.trim())cells.push(...bodyToCells(body,stripNotes.checked));
   }
   return{cells,skipped};
 }
 
+function getCellSrc(cell){
+  const s=Array.isArray(cell.source)?cell.source.join(''):(cell.source||'');
+  return s.replace(/\s+$/,'');
+}
+function outputsToText(cell){
+  if(!cell.outputs||!cell.outputs.length)return'';
+  const parts=[];
+  for(const o of cell.outputs){
+    if(o.output_type==='stream'){
+      parts.push(Array.isArray(o.text)?o.text.join(''):(o.text||''));
+    }else if(o.output_type==='execute_result'||o.output_type==='display_data'){
+      const d=o.data||{};
+      if(d['text/plain']){const t=d['text/plain'];parts.push(Array.isArray(t)?t.join(''):t);}
+    }else if(o.output_type==='error'){
+      const tb=o.traceback||[];parts.push(tb.join('\n').replace(/\[[0-9;]*m/g,''));
+    }
+  }
+  return parts.join('').replace(/\s+$/,'');
+}
+function stripHtml(s){return s.replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();}
+function convertNb(text){
+  let nb;try{nb=JSON.parse(text);}catch(e){throw new Error('Invalid notebook JSON: '+e.message);}
+  const cells=Array.isArray(nb.cells)?nb.cells.slice():[];
+
+  // Extract document title from leading `# ` heading in cell 0
+  let docTitle='Notebook';
+  if(cells.length&&cells[0].cell_type==='markdown'){
+    const src=getCellSrc(cells[0]);
+    const m=src.match(/^#\s+(.+?)(?:\r?\n|$)/);
+    if(m){
+      docTitle=stripHtml(m[1]);
+      const rest=src.slice(m[0].length).replace(/^\s+/,'').replace(/\s+$/,'');
+      if(rest)cells[0]={...cells[0],source:rest};
+      else cells.shift();
+    }
+  }
+
+  // Group cells into sections. Section boundary = markdown cell whose ENTIRE
+  // content is a single `## Heading` line (matches what the forward converter
+  // emits from `fm.title`). Sub-headings inside richer cells stay in the body.
+  const sections=[];let cur=null;
+  const ensure=()=>{if(!cur){cur={title:'',parts:[]};sections.push(cur);}return cur;};
+  for(const cell of cells){
+    const src=getCellSrc(cell);if(!src.trim())continue;
+    if(cell.cell_type==='markdown'){
+      const headMatch=src.match(/^##\s+(.+?)(?:\r?\n|$)/);
+      const onlyHeading=!!headMatch&&src.replace(/^##\s+.+?(?:\r?\n|$)/,'').trim()==='';
+      if(headMatch&&onlyHeading){
+        cur={title:stripHtml(headMatch[1]),parts:[]};
+        sections.push(cur);
+      }else{
+        ensure().parts.push({type:'md',content:src});
+      }
+    }else if(cell.cell_type==='code'){
+      ensure().parts.push({type:'code',content:src});
+      if(includeOutputs.checked){
+        const out=outputsToText(cell);
+        if(out)ensure().parts.push({type:'output',content:out});
+      }
+    }
+  }
+
+  // Classify each section as cue_card vs quiz_card by looking for the
+  // `# Question` / `# Choices` body pattern.
+  for(const sec of sections){
+    const fullBody=sec.parts.filter(p=>p.type==='md').map(p=>p.content).join('\n');
+    sec.cardType=(/^#\s+Question\b/m.test(fullBody)&&/^#\s+Choices\b/m.test(fullBody))?'quiz_card':'cue_card';
+  }
+
+  // Build markdown output in the wrapped-frontmatter format:
+  //   ---
+  //   title: <doc>
+  //
+  //   ---
+  //
+  //   # <doc>
+  //
+  //   ---
+  //   title: <section>
+  //   description:
+  //   duration:
+  //   card_type: cue_card
+  //   ---
+  //
+  //   <body>
+  let codeBlocks=0;
+  const blocks=[];
+  blocks.push('---\ntitle: '+docTitle+'\n\n---');
+  blocks.push('# '+docTitle);
+  for(const sec of sections){
+    const fmLines=['---','title: '+sec.title,'description: ','duration: '];
+    if(defaultCueCard.checked||sec.cardType==='quiz_card')fmLines.push('card_type: '+sec.cardType);
+    fmLines.push('---');
+    const body=sec.parts.map(p=>{
+      if(p.type==='code'){codeBlocks++;return'```python\n'+p.content+'\n```';}
+      if(p.type==='output')return'```\n'+p.content+'\n```';
+      return p.content;
+    }).join('\n\n');
+    blocks.push(fmLines.join('\n')+(body?'\n\n'+body:''));
+  }
+  return{markdown:blocks.join('\n\n')+'\n',sections:sections.length,codeBlocks};
+}
+
 convertBtn.addEventListener('click',async()=>{
   if(!currentFile)return;
+  const fwd=mode==='md2nb';
   clearLog();convertBtn.disabled=true;convertBtn.classList.add('running');convertBtn.textContent='converting…';
   resultPanel.classList.remove('visible');
   log('Reading '+currentFile.name+' ('+fmt(currentFile.size)+')');
   const text=await currentFile.text();
   log('Parsed '+text.split('\n').length+' lines');
   await new Promise(r=>setTimeout(r,60));
-  const secs=(text.match(/\n---\n/g)||[]).length+1;
-  log('Found '+secs+' section(s)');
-  await new Promise(r=>setTimeout(r,60));
-  const{cells,skipped}=convertMd(text);
-  const cc=cells.filter(c=>c.cell_type==='code').length,mc=cells.filter(c=>c.cell_type==='markdown').length;
-  if(skipped>0)log('Skipped '+skipped+' quiz_card(s)','warn');
-  log('Generated '+cells.length+' cells ('+cc+' code · '+mc+' markdown)','ok');
-  const nb={nbformat:4,nbformat_minor:0,metadata:{colab:{provenance:[]},kernelspec:{name:'python3',display_name:'Python 3'},language_info:{name:'python'}},cells};
-  notebookBlob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
-  const sug=outName.value.trim()||outName.placeholder||currentFile.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');
-  outputFilename=sug.endsWith('.ipynb')?sug:sug+'.ipynb';
-  resName.textContent=outputFilename;resInfo.textContent=cells.length+' cells · '+fmt(notebookBlob.size)+' · nbformat 4.0';
-  document.getElementById('rsTotal').textContent=cells.length;
-  document.getElementById('rsCode').textContent=cc;
-  document.getElementById('rsMd').textContent=mc;
-  resultPanel.classList.add('visible');
-  log('Ready → '+outputFilename,'ok');
-  convertBtn.classList.remove('running');convertBtn.textContent='convert to notebook';
+  try{
+    if(fwd){
+      const secs=(text.match(/\n---\n/g)||[]).length+1;
+      log('Found '+secs+' section(s)');
+      await new Promise(r=>setTimeout(r,60));
+      const{cells,skipped}=convertMd(text);
+      const cc=cells.filter(c=>c.cell_type==='code').length,mc=cells.filter(c=>c.cell_type==='markdown').length;
+      if(skipped>0)log('Skipped '+skipped+' quiz_card(s)','warn');
+      log('Generated '+cells.length+' cells ('+cc+' code · '+mc+' markdown)','ok');
+      const nb={nbformat:4,nbformat_minor:0,metadata:{colab:{provenance:[]},kernelspec:{name:'python3',display_name:'Python 3'},language_info:{name:'python'}},cells};
+      outputBlob=new Blob([JSON.stringify(nb,null,2)],{type:'application/json'});
+      const sug=outName.value.trim()||outName.placeholder||currentFile.name.replace(/\.(md|markdown)$/i,'_generated.ipynb');
+      outputFilename=sug.endsWith('.ipynb')?sug:sug+'.ipynb';
+      resName.textContent=outputFilename;resInfo.textContent=cells.length+' cells · '+fmt(outputBlob.size)+' · nbformat 4.0';
+      document.getElementById('rsTotal').textContent=cells.length;
+      document.getElementById('rsCode').textContent=cc;
+      document.getElementById('rsMd').textContent=mc;
+    }else{
+      const{markdown,sections,codeBlocks}=convertNb(text);
+      log('Found '+sections+' section(s)');
+      await new Promise(r=>setTimeout(r,60));
+      const lines=markdown.split('\n').length;
+      log('Generated '+sections+' section(s) · '+codeBlocks+' code block(s) · '+lines+' lines','ok');
+      outputBlob=new Blob([markdown],{type:'text/markdown'});
+      const sug=outName.value.trim()||outName.placeholder||currentFile.name.replace(/\.ipynb$/i,'.md');
+      outputFilename=/\.(md|markdown)$/i.test(sug)?sug:sug+'.md';
+      resName.textContent=outputFilename;resInfo.textContent=sections+' sections · '+fmt(outputBlob.size)+' · markdown';
+      document.getElementById('rsTotal').textContent=sections;
+      document.getElementById('rsCode').textContent=codeBlocks;
+      document.getElementById('rsMd').textContent=lines;
+    }
+    resultPanel.classList.add('visible');
+    log('Ready → '+outputFilename,'ok');
+  }catch(e){
+    log(e.message||String(e),'err');
+  }
+  convertBtn.classList.remove('running');convertBtn.textContent=fwd?'convert to notebook':'convert to markdown';
   convertBtn.disabled=false;convertBtn.classList.add('ready');
 });
 
 dlBtn.addEventListener('click',()=>{
-  if(!notebookBlob)return;
-  const a=document.createElement('a');a.href=URL.createObjectURL(notebookBlob);a.download=outputFilename;a.click();URL.revokeObjectURL(a.href);
+  if(!outputBlob)return;
+  const a=document.createElement('a');a.href=URL.createObjectURL(outputBlob);a.download=outputFilename;a.click();URL.revokeObjectURL(a.href);
   log('Downloaded: '+outputFilename,'ok');
 });
 </script>
